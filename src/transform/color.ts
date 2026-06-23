@@ -19,8 +19,10 @@ export function toHex6(value: string): string | null {
   const hex3 = /^#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])$/.exec(v);
   if (hex3) return `#${hex3[1]}${hex3[1]}${hex3[2]}${hex3[2]}${hex3[3]}${hex3[3]}`.toLowerCase();
 
-  // hsl(H, S%, L%) / hsl(H S% L%) with optional surrounding spaces.
-  const hsl = /^hsla?\(\s*([\d.]+)\s*[, ]\s*([\d.]+)%\s*[, ]\s*([\d.]+)%/.exec(v);
+  // hsl(H, S%, L%) / hsl(H S% L%), with an optional alpha channel, anchored to the
+  // end of the string so trailing garbage (e.g. "hsl(0,0%,0%)x") is rejected.
+  const hsl =
+    /^hsla?\(\s*([\d.]+)\s*[, ]\s*([\d.]+)%\s*[, ]\s*([\d.]+)%\s*(?:[,/]\s*[\d.]+%?\s*)?\)\s*$/.exec(v);
   if (hsl) return hslToHex(parseFloat(hsl[1]), parseFloat(hsl[2]), parseFloat(hsl[3]));
 
   return null;

@@ -40,8 +40,11 @@ function componentProvenance(cat: AnyCatalog): Array<{ a2ui: string; source: str
  * themed entirely by the design system: dspack tokens -> A2UI CSS vars -> pixels.
  */
 function a2uiThemeVars(cat: AnyCatalog): React.CSSProperties {
-  const c = cat.$defs.theme["x-dspack-tokens"].color as Record<string, string>;
-  const radius = "8px"; // dspack border-radius.radius (0.5rem) resolved for the renderer
+  const tokens = cat.$defs.theme["x-dspack-tokens"];
+  const c = tokens.color as Record<string, string>;
+  // Read the radius from the dspack token palette in its native units (0.5rem),
+  // rather than hard-coding a px value that could drift from the token.
+  const radius = (tokens["border-radius"]?.radius as string) ?? "0.5rem";
   return {
     ["--a2ui-color-primary" as any]: c.primary,
     ["--a2ui-color-on-primary" as any]: c["primary-foreground"],

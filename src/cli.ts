@@ -20,8 +20,21 @@ interface Args {
 }
 
 function parseArgs(argv: string[]): Args {
+  // Supports `--key value` and `--key=value`; fails fast on a malformed flag or a
+  // `--key` missing its value rather than silently recording `undefined`.
   const m = new Map<string, string>();
-  for (let i = 0; i < argv.length; i += 2) m.set(argv[i].replace(/^--/, ""), argv[i + 1]);
+  for (let i = 0; i < argv.length; i++) {
+    const tok = argv[i];
+    if (!tok.startsWith("--")) fail(`unexpected argument '${tok}' (flags must start with --)`);
+    const eq = tok.indexOf("=");
+    if (eq !== -1) {
+      m.set(tok.slice(2, eq), tok.slice(eq + 1));
+    } else {
+      const value = argv[++i];
+      if (value === undefined) fail(`flag '${tok}' is missing a value`);
+      m.set(tok.slice(2), value);
+    }
+  }
   const version = m.get("a2ui-version");
   if (version !== "0.9.1" && version !== "1.0") {
     fail("--a2ui-version must be '0.9.1' or '1.0'");
