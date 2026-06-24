@@ -30,6 +30,8 @@ export interface Profile {
   components: ComponentPlan[];
   synthesized: ComponentPlan[];
   casualtyComponents: CasualtyComponent[];
+  /** dspack component ids deliberately left out (not mapped, not a casualty). */
+  intentionallyOmitted?: string[];
 }
 
 export interface ComponentPlan {

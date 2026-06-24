@@ -1,6 +1,6 @@
 {
   "a2uiVersion": "1.0",
-  "generatedAt": "2026-06-23T20:53:14.214Z",
+  "generatedAt": "2026-06-24T19:48:01.626Z",
   "validation": {
     "pass": true,
     "gates": [
@@ -391,5 +391,45 @@
   "primaryColor": {
     "hex": "#0f172a",
     "source": "tokens.color.primary"
+  },
+  "coverage": {
+    "unclassified": [],
+    "entries": [
+      {
+        "id": "button",
+        "disposition": "mapped",
+        "detail": "-> Button"
+      },
+      {
+        "id": "alert-dialog",
+        "disposition": "unsupported",
+        "detail": "Modal: Same composition loss as Dialog, plus the defining AlertDialog semantics (non-dismissible, alertdialog role, focus-to-cancel) have no A2UI catalog representation."
+      },
+      {
+        "id": "dialog",
+        "disposition": "unsupported",
+        "detail": "Modal: dspack Dialog is a compound component (DialogTrigger/Content/Header/Title/Description/Footer/Close) with required-children composition rules, focus management, and a11y roles. A2UI Modal exposes only trigger+content; the composition contract cannot be represented."
+      },
+      {
+        "id": "card",
+        "disposition": "mapped",
+        "detail": "-> Card"
+      },
+      {
+        "id": "input",
+        "disposition": "mapped",
+        "detail": "-> TextField"
+      },
+      {
+        "id": "badge",
+        "disposition": "adapted",
+        "detail": "Text: shadcn Badge has no native A2UI component. Its instances fold onto the Text primitive; the status-label semantics and the variant enum (default/secondary/outline/destructive) have no representation and are lost."
+      },
+      {
+        "id": "dropdown-menu",
+        "disposition": "unsupported",
+        "detail": "No A2UI basic component corresponds to a dropdown menu (items, checkbox/radio items, sub-menus, separators). Omitted."
+      }
+    ]
   }
 }

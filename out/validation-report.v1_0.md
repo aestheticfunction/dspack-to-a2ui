@@ -73,6 +73,18 @@ Primary color token: tokens.color.primary → `#0f172a`
 | `layout` | `(dropped)` | cannot be represented | Layout primitives (breakpoints/grid/containers/spacing): A2UI catalogs describe renderable component shape, not design intent. Deliberate casualty. |
 | `themes` | `(dropped)` | cannot be represented | Named theme overrides (e.g. dark mode): A2UI catalogs describe renderable component shape, not design intent. Deliberate casualty. |
 
+## Component coverage (every input dspack component accounted for)
+
+| dspack component | Disposition | Detail |
+| --- | --- | --- |
+| `button` | mapped | -> Button |
+| `alert-dialog` | unsupported | Modal: Same composition loss as Dialog, plus the defining AlertDialog semantics (non-dismissible, alertdialog role, focus-to-cancel) have no A2UI catalog representation. |
+| `dialog` | unsupported | Modal: dspack Dialog is a compound component (DialogTrigger/Content/Header/Title/Description/Footer/Close) with required-children composition rules, focus management, and a11y roles. A2UI Modal exposes only trigger+content; the composition contract cannot be represented. |
+| `card` | mapped | -> Card |
+| `input` | mapped | -> TextField |
+| `badge` | adapted | Text: shadcn Badge has no native A2UI component. Its instances fold onto the Text primitive; the status-label semantics and the variant enum (default/secondary/outline/destructive) have no representation and are lost. |
+| `dropdown-menu` | unsupported | No A2UI basic component corresponds to a dropdown menu (items, checkbox/radio items, sub-menus, separators). Omitted. |
+
 ## Warnings (unsupported dspack constructs)
 
 - **dropped-prop:button.size** — dspack button.size has no A2UI representation and was dropped.
