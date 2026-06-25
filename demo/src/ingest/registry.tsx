@@ -10,8 +10,16 @@
  * "unimplemented" placeholder.
  */
 import type { Registry } from "./buildCatalog";
+import { TableRender } from "./components/Table";
+import { BadgeRender } from "./components/Badge";
+import { AlertDialogRender } from "./components/AlertDialog";
 
 export const registry: Registry = {
   reuseBasic: new Set(["Button", "Card", "Text", "TextField", "Column", "Row", "Modal"]),
-  custom: {},
+  // Hand-authored visuals for components A2UI's Basic Catalog does not provide.
+  custom: {
+    Table: TableRender,
+    Badge: BadgeRender,
+    AlertDialog: AlertDialogRender,
+  },
 };

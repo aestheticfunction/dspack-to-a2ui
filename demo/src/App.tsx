@@ -5,8 +5,14 @@ import { renderMarkdown } from "@a2ui/markdown-it";
 import { buildCatalog, registry } from "./ingest";
 
 // The exact same artifacts the transformer produced — imported, not duplicated.
-import surfaceDoc from "../../surface/settings-card.surface.json";
+import settingsSurface from "../../surface/settings-card.surface.json";
+import accessSurface from "../../surface/access-management.surface.json";
 import catalog from "../../out/catalog.v0_9_1.json";
+
+const SURFACES: Record<string, { label: string; doc: any }> = {
+  access: { label: "Access management (revoke)", doc: accessSurface },
+  settings: { label: "Account settings", doc: settingsSurface },
+};
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type AnyCatalog = any;
@@ -52,12 +58,17 @@ function a2uiThemeVars(cat: AnyCatalog): React.CSSProperties {
     ["--a2ui-color-background" as any]: c.background,
     ["--a2ui-color-on-background" as any]: c.foreground,
     ["--a2ui-border" as any]: `1px solid ${c.border}`,
+    ["--a2ui-color-border" as any]: c.border,
+    ["--a2ui-color-muted" as any]: c.muted,
+    ["--a2ui-color-muted-foreground" as any]: c["muted-foreground"],
     ["--a2ui-border-radius" as any]: radius,
     ["--a2ui-color-error" as any]: c.destructive,
+    ["--a2ui-color-on-error" as any]: c["destructive-foreground"],
   };
 }
 
 export function App() {
+  const [surfaceKey, setSurfaceKey] = useState<string>("access");
   const [surface, setSurface] = useState<AnySurface | null>(null);
   const [actions, setActions] = useState<A2uiClientAction[]>([]);
 
@@ -67,15 +78,17 @@ export function App() {
   const ingested = useMemo(() => buildCatalog(catalog as any, registry), []);
 
   useEffect(() => {
+    setActions([]);
+    setSurface(null);
     const processor = new MessageProcessor<ReactComponentImplementation>(
       [ingested.catalog],
       async (action: A2uiClientAction) => setActions((prev) => [...prev, action]),
     );
-    processor.processMessages(structuredClone(surfaceDoc.messages) as any);
+    processor.processMessages(structuredClone(SURFACES[surfaceKey].doc.messages) as any);
     const model = Array.from(processor.model.surfacesMap.values())[0];
     if (model) setSurface(processor.model.getSurface(model.id));
     return () => processor.model.dispose();
-  }, [ingested]);
+  }, [ingested, surfaceKey]);
 
   const primaryColor = catalog.$defs.theme.properties.primaryColor.default as string;
   const btn = buttonVariantInfo(catalog);
@@ -90,6 +103,24 @@ export function App() {
           <strong> generated catalog</strong> ingested into the <code>@a2ui/react</code> v0.9.1
           renderer.
         </p>
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          {Object.entries(SURFACES).map(([key, s]) => (
+            <button
+              key={key}
+              onClick={() => setSurfaceKey(key)}
+              style={{
+                ...styles.code,
+                cursor: "pointer",
+                border: "1px solid #cbd5e1",
+                background: key === surfaceKey ? "#0f172a" : "#fff",
+                color: key === surfaceKey ? "#fff" : "#0f172a",
+                padding: "6px 12px",
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       </header>
 
       <main style={styles.grid}>

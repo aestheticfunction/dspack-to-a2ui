@@ -21,38 +21,43 @@ import { registry } from "../demo/src/ingest/registry";
 const repo = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url));
 const load = (p: string) => JSON.parse(readFileSync(p, "utf8")) as DspackDoc;
 
-const baseDoc = load(repo("input/shadcn-ui.dspack.json"));
-const tablesDoc = load(repo("input/shadcn-ui-with-table.dspack.json"));
+// The canonical input now includes the `table` component (the updated contract).
+const doc = load(repo("input/shadcn-ui.dspack.json"));
 
 const names = (cat: any): string[] => Object.keys(cat.components ?? {});
 
-/** A profile that additionally maps the dspack `table` component to an A2UI `Table`. */
-const TABLE_PLAN: ComponentPlan = {
-  a2ui: "Table",
-  dspackId: "table",
+/** The shadcn profile with the Table mapping removed (Table is neither mapped nor a casualty). */
+const tableLessProfile: Profile = {
+  ...shadcnProfile,
+  components: shadcnProfile.components.filter((c) => c.a2ui !== "Table"),
+};
+
+/** A profile that maps dropdown-menu to a component the registry has NO visual for. */
+const DROPDOWN_PLAN: ComponentPlan = {
+  a2ui: "DropdownMenu",
+  dspackId: "dropdown-menu",
   commons: ["ComponentCommon"],
   structural: {
-    caption: {
+    triggerLabel: {
       schema: { $ref: "#/$defs/DynamicString" },
-      description: "Table caption.",
-      synthNote: "A2UI has no Table; the component shape is synthesized.",
-    },
-    rows: {
-      schema: { $ref: "#/$defs/ChildList" },
-      description: "Row component IDs.",
-      synthNote: "Rows modeled as a child list.",
+      description: "Trigger label.",
+      synthNote: "synth",
     },
   },
-  required: ["rows"],
+  required: ["triggerLabel"],
 };
-const tableProfile: Profile = { ...shadcnProfile, components: [...shadcnProfile.components, TABLE_PLAN] };
+const dropdownProfile: Profile = {
+  ...shadcnProfile,
+  components: [...shadcnProfile.components, DROPDOWN_PLAN],
+  casualtyComponents: shadcnProfile.casualtyComponents.filter((c) => c.dspackId !== "dropdown-menu"),
+};
 
 describe("Gate A — vocabulary is catalog-driven (no adapter edit)", () => {
-  it("adding Table to the compiled contract adds it to the renderer's accepted vocabulary", () => {
-    const base = transformFromJson(baseDoc, { profile: shadcnProfile }).catalog;
-    const withTable = transformFromJson(tablesDoc, { profile: tableProfile }).catalog;
+  it("mapping Table in the compiled contract adds it to the renderer's accepted vocabulary", () => {
+    const withTable = transformFromJson(doc, { profile: shadcnProfile }).catalog;
+    const withoutTable = transformFromJson(doc, { profile: tableLessProfile }).catalog;
 
-    const added = names(withTable).filter((n) => !names(base).includes(n));
+    const added = names(withTable).filter((n) => !names(withoutTable).includes(n));
     expect(added).toEqual(["Table"]);
     // The adapter builds a real ComponentApi for the new name with zero adapter changes.
     expect(buildComponentApi(withTable, "Table").name).toBe("Table");
@@ -61,12 +66,12 @@ describe("Gate A — vocabulary is catalog-driven (no adapter edit)", () => {
 
 describe("Gate B — accepted props are catalog-driven (no adapter edit)", () => {
   it("adding a Button variant in the contract makes the ingested schema accept it", () => {
-    const base = transformFromJson(baseDoc, { profile: shadcnProfile }).catalog;
+    const base = transformFromJson(doc, { profile: shadcnProfile }).catalog;
 
     const modProfile: Profile = structuredClone(shadcnProfile);
     const button = modProfile.components.find((c) => c.a2ui === "Button")!;
     button.propMap!.variant.targetEnum = [...button.propMap!.variant.targetEnum!, "subtle"];
-    const mod = transformFromJson(baseDoc, { profile: modProfile }).catalog;
+    const mod = transformFromJson(doc, { profile: modProfile }).catalog;
 
     const validProps = { child: "lbl", action: { event: { name: "save", context: {} } }, variant: "subtle" };
     expect(buildComponentApi(base, "Button").schema.safeParse(validProps).success).toBe(false);
@@ -76,25 +81,26 @@ describe("Gate B — accepted props are catalog-driven (no adapter edit)", () =>
 
 describe("Gate C — refusal vs unimplemented are distinct and non-silent", () => {
   it("a catalog name without a visual is 'unimplemented'; a name absent from the catalog is refused", () => {
-    const withTable = transformFromJson(tablesDoc, { profile: tableProfile }).catalog;
-    const plan = planRegistry(names(withTable), registry);
+    const cat = transformFromJson(doc, { profile: dropdownProfile }).catalog;
+    const plan = planRegistry(names(cat), registry);
 
-    // Table is in the catalog (accepted vocabulary) but has no registered visual yet.
-    expect(plan.unimplemented).toContain("Table");
-    // The reused basics are not flagged unimplemented.
+    // DropdownMenu is in the catalog (accepted vocabulary) but has no registered visual.
+    expect(plan.unimplemented).toContain("DropdownMenu");
+    // Reused basics and hand-authored visuals are not flagged unimplemented.
     expect(plan.reuseBasic).toEqual(expect.arrayContaining(["Button", "Card", "TextField"]));
+    expect(plan.custom).toEqual(expect.arrayContaining(["Table", "Badge", "AlertDialog"]));
     // A name absent from the catalog is a different state: the renderer refuses it (Unknown).
-    expect(names(withTable)).not.toContain("Nonexistent");
+    expect(names(cat)).not.toContain("Nonexistent");
   });
 
-  it("the base catalog has no unimplemented components (all reused)", () => {
-    const base = transformFromJson(baseDoc, { profile: shadcnProfile }).catalog;
+  it("the default catalog has no unimplemented components (all have a visual)", () => {
+    const base = transformFromJson(doc, { profile: shadcnProfile }).catalog;
     expect(planRegistry(names(base), registry).unimplemented).toEqual([]);
   });
 });
 
 describe("Binding fidelity — the linchpin", () => {
-  const cat = transformFromJson(baseDoc, { profile: shadcnProfile }).catalog;
+  const cat = transformFromJson(doc, { profile: shadcnProfile }).catalog;
   const shapeOf = (name: string) => (scrapeSchemaBehavior(buildComponentApi(cat, name).schema) as any).shape;
 
   it("dynamic, action, child-list, and checkable props are recognized by scrapeSchemaBehavior", () => {
@@ -114,7 +120,7 @@ describe("Binding fidelity — the linchpin", () => {
 
 describe("Tier independence — Tier 1 works with no x-a2ui hints", () => {
   it("stripping all x-a2ui keys leaves binding + enum classification intact", () => {
-    const cat = transformFromJson(baseDoc, { profile: shadcnProfile }).catalog;
+    const cat = transformFromJson(doc, { profile: shadcnProfile }).catalog;
     const stripped = JSON.parse(
       JSON.stringify(cat, (k, v) => (k.startsWith("x-a2ui") ? undefined : v)),
     );
@@ -127,8 +133,8 @@ describe("Tier independence — Tier 1 works with no x-a2ui hints", () => {
 
 describe("Coverage — no silent drops (P1)", () => {
   it("an unmapped dspack component is reported as unclassified, not silently dropped", () => {
-    // The STOCK profile does not map `table`; it must still be accounted for.
-    const r = transformFromJson(tablesDoc, { profile: shadcnProfile });
+    // A profile that does not map `table` (and doesn't list it a casualty) must still account for it.
+    const r = transformFromJson(doc, { profile: tableLessProfile });
     const cov = r.mapping.coverage.find((c) => c.id === "table");
     expect(cov?.disposition).toBe("unclassified");
     expect(r.mapping.warnings.map((w) => w.code)).toContain("unclassified-component:table");

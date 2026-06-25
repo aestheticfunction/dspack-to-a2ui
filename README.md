@@ -167,13 +167,22 @@ mapped / adapted / omitted / unsupported and reports it (the `## Component cover
 of each validation report). An unclassified component emits a warning and, under
 `--strict-coverage`, fails the CLI (exit 3).
 
-**Honest scope / not yet done:** the first ingested surface is the hand-authored
-`settings-card` (it validates against the generated catalog and uses only its components). The
-demo does **not** generate surfaces from dspack patterns. Table-oriented components
-(`Table`, `Badge`, `AlertDialog` with its non-dismissible distinction, `DropdownMenu`) are
-specified in the plan (P4/P5) and have ingestion + gate coverage scaffolding, but their React
-visuals and an enterprise table surface are follow-on work. v1.0 remains validated, not
-rendered.
+**Access-management demo (P4/P5).** The updated dspack adds a `table` component and a
+`data-table-with-row-actions` pattern, so the demo now includes a second surface,
+`surface/access-management.surface.json`, for the prompt *"Build an access-management page
+with a revoke action."* It renders off the generated catalog using ingested `Table` and
+`Badge` components plus an `AlertDialog`. The **revoke** action is a destructive,
+**non-dismissible** confirmation (the dspack `destructive-action-confirmation` pattern, and
+the AlertDialog-vs-Dialog distinction): clicking the overlay does not dismiss it, and
+confirming dispatches a `revoke_access` event through the A2UI action mechanism. As before,
+the catalog governs names/props/accept-refuse; the `Table`/`Badge`/`AlertDialog` **visuals**
+are hand-authored React in `demo/src/ingest/components/`.
+
+**Honest scope / not yet done:** surfaces are hand-authored (the demo does **not** yet
+generate surfaces from dspack patterns); `Table`/`Badge`/`AlertDialog` are synthesized A2UI
+component *shapes* (the dspack sub-component composition is a documented casualty, not a
+faithful compound contract); `dialog` and `dropdown-menu` remain unsupported casualties; and
+v1.0 remains validated, not rendered.
 
 ## Pinned versions
 
