@@ -10,6 +10,17 @@
  * dspack tokens populate (see App.tsx `a2uiThemeVars`). This is the documented
  * "set the CSS var from the same token" path, not a bespoke color.
  */
+/*
+ * Page background. The demo otherwise leaves <body> transparent, so on a dark
+ * browser/preview canvas the dark page text (#0f172a) becomes unreadable. Set an
+ * explicit light surface so the header and labels are always legible.
+ */
+html,
+body {
+  margin: 0;
+  background: #f8fafc;
+}
+
 .a2ui-surface button {
   background: var(--a2ui-color-primary);
   color: var(--a2ui-color-on-primary);
