@@ -107,7 +107,10 @@ function computeCoverage(
   fidelity: FidelityEntry[],
 ): CoverageEntry[] {
   const mapped = new Map<string, string>(); // dspackId -> A2UI name
-  for (const p of profile.components) if (p.dspackId) mapped.set(p.dspackId, p.a2ui);
+  // Both `components` and any `synthesized` plan that declares a `dspackId` count as mapped.
+  for (const p of [...profile.components, ...profile.synthesized]) {
+    if (p.dspackId) mapped.set(p.dspackId, p.a2ui);
+  }
 
   const casualties = new Map<string, (typeof profile.casualtyComponents)[number]>();
   for (const c of profile.casualtyComponents) casualties.set(c.dspackId, c);

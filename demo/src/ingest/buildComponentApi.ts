@@ -4,9 +4,15 @@
  *
  * This module is GENERIC A2UI ingestion. It reads only the catalog JSON and the standard
  * A2UI common-type vocabulary; it has no dspack knowledge and no hardcoded component-name
- * list. The same classifier maps any conformant A2UI catalog whether its common types are
- * inlined (as this project emits them) or referenced externally, because both use the same
- * `$defs` names (DynamicString, ComponentId, ChildList, Action, ...).
+ * list. Property-level classification keys on the `$ref` NAME (the last path segment), so a
+ * prop like `DynamicString` classifies identically whether the ref is inlined
+ * (`#/$defs/DynamicString`) or external (`.../common_types.json#/$defs/DynamicString`).
+ *
+ * The allOf/`$ref` FLATTENING (used to merge ComponentCommon / Checkable property sets)
+ * resolves internal `#/...` refs only; an external `$ref` is rejected with a clear error
+ * rather than silently dropping properties. This project emits fully inlined commons, so
+ * internal resolution is sufficient here; supporting external-commons catalogs would mean
+ * fetching/resolving those documents in `resolveRef`.
  *
  * Tier 1 (primary, required): classify each property from the catalog itself, mapping the
  * common-type `$ref` names to the canonical Zod unions exported by @a2ui/web_core so that
@@ -38,6 +44,7 @@ const REF_TO_ZOD: Record<string, z.ZodTypeAny> = {
   ComponentId: ComponentIdSchema,
   ChildList: ChildListSchema,
   Action: ActionSchema,
+  AccessibilityAttributes: AccessibilityAttributesSchema,
 };
 
 /** Tier 2: x-a2ui kind to Zod, used only when Tier 1 cannot classify from the schema. */
@@ -62,11 +69,17 @@ function refName(schema: Json | undefined): string | undefined {
 }
 
 function resolveRef(catalog: Json, ref: string): Json {
-  // Only internal "#/..." pointers are supported (this project emits no external refs).
+  // Fail fast rather than silently dropping properties/required constraints.
+  if (!ref.startsWith("#/")) {
+    throw new Error(
+      `Unsupported external $ref '${ref}'. The ingestion adapter resolves internal refs only.`,
+    );
+  }
   const path = ref.replace(/^#\//, "").split("/");
   let node: any = catalog;
   for (const seg of path) node = node?.[seg];
-  return node ?? {};
+  if (node === undefined) throw new Error(`Unresolvable internal $ref '${ref}'.`);
+  return node;
 }
 
 /** Flatten a component's allOf/$ref chain into a merged property map + required set. */
@@ -118,15 +131,14 @@ function zodForProp(prop: Json): { schema: z.ZodTypeAny; defaultApplied: boolean
   return { schema: z.any(), defaultApplied: false };
 }
 
-/** Common props every A2UI component accepts (accessibility, weight). */
-const commonProps = () => ({
-  accessibility: AccessibilityAttributesSchema.optional(),
-  weight: z.number().optional(),
-});
-
 /**
  * Build a renderer ComponentApi from the catalog component named `name`.
  * `catalog` is the full parsed catalog JSON (needed to resolve internal `$ref`s).
+ *
+ * The schema is derived ENTIRELY from the catalog (props + common props like
+ * `accessibility` flow through the same classifier). We do not inject any property the
+ * catalog does not define, so the renderer accepts exactly what the generated contract
+ * validates (e.g. `weight` is accepted only if the catalog's common type defines it).
  */
 export function buildComponentApi(catalog: Json, name: string): ComponentApi {
   const component = catalog.components?.[name];
@@ -137,7 +149,6 @@ export function buildComponentApi(catalog: Json, name: string): ComponentApi {
   const built: Record<string, z.ZodTypeAny> = {};
   for (const [propName, propSchema] of Object.entries(props)) {
     if (ENVELOPE_KEYS.has(propName)) continue; // component/id handled by the envelope
-    if (propName === "accessibility") continue; // provided by commonProps
     let { schema, defaultApplied } = zodForProp(propSchema as Json);
     if (!defaultApplied && (propSchema as Json).default !== undefined) {
       schema = (schema as any).default((propSchema as Json).default);
@@ -146,6 +157,6 @@ export function buildComponentApi(catalog: Json, name: string): ComponentApi {
     built[propName] = schema;
   }
 
-  const schema = z.object({ ...commonProps(), ...built }).strict();
+  const schema = z.object(built).strict();
   return { name, schema };
 }
