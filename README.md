@@ -23,7 +23,7 @@ or runtime governance.
 
 ## Demo
 
-The full chain: an example `dspack.json` queried via ds-mcp, compiled by this transformer, and rendered through the published A2UI renderer.
+The full chain: an example `dspack.json` queried via `ds-mcp`, compiled by this transformer, and rendered through the published A2UI renderer.
 
 https://github.com/user-attachments/assets/510a781b-4214-49b3-b997-9cbecdc36961
 
